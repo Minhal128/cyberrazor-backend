@@ -39,15 +39,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB Configuration
-MONGODB_URL = os.getenv("MONGODB_URL")
+# MongoDB Configuration with improved connection settings
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb+srv://rminhal783:Hhua6tUekZkGfBx0@cluster0.auuhgc5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0&connectTimeoutMS=10000&serverSelectionTimeoutMS=5000&socketTimeoutMS=10000&maxPoolSize=50")
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "cyberrazor")
 
-# Validate MongoDB URL is set
-if not MONGODB_URL:
-    print("❌ ERROR: MONGODB_URL environment variable is not set!")
-    print("💡 Please set MONGODB_URL in your Vercel environment variables")
-    MONGODB_URL = "mongodb://localhost:27017"  # Fallback for local development only
+# Always use the MongoDB Atlas connection string
+print(f"🔗 MongoDB URL configured: {MONGODB_URL[:50]}...")
+print(f"📊 Database Name: {MONGODB_DB_NAME}")
 
 # Authentication Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
@@ -117,36 +115,85 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 async def connect_to_mongo():
-    """Initialize MongoDB connection"""
+    """Initialize MongoDB connection with retry logic"""
     global client, db, db_connected
-    try:
-        print(f"🔗 Attempting to connect to MongoDB...")
-        print(f"📍 Database: {MONGODB_DB_NAME}")
-        print(f"🔐 URL: {MONGODB_URL[:20]}..." if MONGODB_URL and len(MONGODB_URL) > 20 else f"🔐 URL: {MONGODB_URL}")
-        
-        client = AsyncIOMotorClient(MONGODB_URL)
-        db = client[MONGODB_DB_NAME]
-        
-        # Test the connection
-        await client.admin.command('ping')
-        print("✅ Connected to MongoDB successfully")
-        db_connected = True
-        
-        # Initialize collections with default data
-        await init_collections()
-        
-        return True
-    except ConnectionFailure as e:
-        print(f"❌ Failed to connect to MongoDB: {e}")
-        print("💡 Check your MONGODB_URL environment variable in Vercel")
-        print("💡 Ensure your MongoDB Atlas cluster is accessible from Vercel")
-        db_connected = False
-        return False
-    except Exception as e:
-        print(f"❌ MongoDB connection error: {e}")
-        print("💡 This might be an authentication or network issue")
-        db_connected = False
-        return False
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"🔗 Attempting to connect to MongoDB (attempt {attempt + 1}/{max_retries})...")
+            print(f"📍 Database: {MONGODB_DB_NAME}")
+            print(f"🔐 URL: {MONGODB_URL[:20]}..." if MONGODB_URL and len(MONGODB_URL) > 20 else f"🔐 URL: {MONGODB_URL}")
+            
+            # Close existing client if any
+            if client:
+                client.close()
+            
+            # Create new client with optimized settings
+            client = AsyncIOMotorClient(
+                MONGODB_URL,
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000,
+                heartbeatFrequencyMS=10000,
+                maxPoolSize=50,
+                minPoolSize=5,
+                retryWrites=True,
+                retryReads=True
+            )
+            db = client[MONGODB_DB_NAME]
+            
+            # Test the connection with timeout
+            await asyncio.wait_for(client.admin.command('ping'), timeout=10.0)
+            print("✅ Connected to MongoDB successfully!")
+            print(f"✅ Connection status: OPERATIONAL")
+            print(f"✅ Database ready: {MONGODB_DB_NAME}")
+            
+            db_connected = True
+            
+            # Initialize collections with default data
+            await init_collections()
+            
+            return True
+            
+        except asyncio.TimeoutError:
+            print(f"⏰ Connection timeout (attempt {attempt + 1})")
+            if attempt < max_retries - 1:
+                print(f"🔄 Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("❌ All connection attempts failed - timeout")
+                db_connected = False
+                return False
+                
+        except ConnectionFailure as e:
+            print(f"❌ MongoDB connection failure (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                print(f"🔄 Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                print("❌ All connection attempts failed - connection failure")
+                print("💡 Check your MONGODB_URL environment variable")
+                print("💡 Ensure your MongoDB Atlas cluster is accessible")
+                print("💡 Verify your IP is whitelisted in MongoDB Atlas")
+                db_connected = False
+                return False
+                
+        except Exception as e:
+            print(f"❌ MongoDB connection error (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                print(f"🔄 Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                print("❌ All connection attempts failed - general error")
+                print("💡 This might be an authentication or network issue")
+                print(f"💡 Error details: {str(e)}")
+                db_connected = False
+                return False
 
 async def init_collections():
     """Initialize collections with default data"""
@@ -364,6 +411,79 @@ async def health():
             "metrics": {"alerts_processed": 150}
         }
     ]
+
+@app.get("/api/connection-status")
+async def connection_status():
+    """Show clear MongoDB connection status with success messages"""
+    global db_connected, client, db
+    
+    status_info = {
+        "timestamp": datetime.now().isoformat(),
+        "database_configured": bool(MONGODB_URL),
+        "client_initialized": client is not None,
+        "connection_established": db_connected,
+        "database_name": MONGODB_DB_NAME,
+        "mongodb_url_preview": MONGODB_URL[:50] + "..." if MONGODB_URL else None
+    }
+    
+    # Test real-time connection
+    connection_test = {
+        "ping_successful": False,
+        "ping_response_time_ms": None,
+        "error_details": None,
+        "last_test_time": datetime.now().isoformat()
+    }
+    
+    try:
+        if not db_connected or not client:
+            print("🔄 Connection not established, attempting to connect...")
+            await connect_to_mongo()
+        
+        if client and db:
+            import time
+            start_time = time.time()
+            await client.admin.command('ping')
+            response_time = (time.time() - start_time) * 1000
+            
+            connection_test["ping_successful"] = True
+            connection_test["ping_response_time_ms"] = round(response_time, 2)
+            status_info["connection_established"] = True
+            db_connected = True
+            
+            print(f"✅ MongoDB ping successful - {response_time:.2f}ms")
+            
+    except Exception as e:
+        connection_test["error_details"] = str(e)
+        status_info["connection_established"] = False
+        db_connected = False
+        print(f"❌ MongoDB ping failed: {e}")
+    
+    # Determine overall status
+    if connection_test["ping_successful"]:
+        overall_status = "🟢 CONNECTED - MongoDB is operational"
+        status_message = "Successfully connected to MongoDB Atlas cluster"
+        recommendations = [
+            "✅ Database connection is healthy",
+            "✅ All operations should work normally",
+            "✅ No action required"
+        ]
+    else:
+        overall_status = "🔴 DISCONNECTED - MongoDB connection failed"
+        status_message = "Unable to establish connection to MongoDB"
+        recommendations = [
+            "💡 Check your MongoDB Atlas cluster status",
+            "💡 Verify your connection string is correct", 
+            "💡 Ensure your IP address is whitelisted",
+            "💡 Check network connectivity"
+        ]
+    
+    return {
+        "overall_status": overall_status,
+        "status_message": status_message,
+        "connection_details": status_info,
+        "connection_test": connection_test,
+        "recommendations": recommendations
+    }
 
 @app.post("/api/activate-key")
 async def activate_key(request: ActivationRequest, database=Depends(get_database)):
