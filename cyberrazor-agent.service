@@ -1,0 +1,39 @@
+[Unit]
+Description=CyberRazor Threat Detection Agent
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=cyberrazor
+Group=cyberrazor
+WorkingDirectory=/opt/cyberrazor-agent
+ExecStart=/usr/bin/python3 /opt/cyberrazor-agent/threat_agent.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cyberrazor-agent
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log /opt/cyberrazor-agent/models
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment variables
+Environment=PYTHONPATH=/opt/cyberrazor-agent
+Environment=CYBERRAZOR_API_KEY=your-api-key-here
+Environment=CYBERRAZOR_BACKEND_URL=http://localhost:8000
+Environment=WAZUH_URL=http://localhost:55000
+Environment=WAZUH_USERNAME=wazuh
+Environment=WAZUH_PASSWORD=wazuh
+
+[Install]
+WantedBy=multi-user.target 

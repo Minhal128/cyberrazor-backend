@@ -1,0 +1,76 @@
+# CyberRazor Threat Detection Agent Configuration
+
+# API Configuration
+api_key: "your-api-key-here"  # Replace with actual API key
+backend_url: "http://localhost:8000"  # Backend API URL
+
+# Wazuh SIEM Integration
+wazuh_url: "http://localhost:55000"  # Wazuh manager URL
+wazuh_credentials:
+  username: "wazuh"  # Wazuh API username
+  password: "wazuh"  # Wazuh API password
+
+# Scanning Configuration
+scan_interval: 30  # Scan interval in seconds
+max_processes_per_scan: 1000  # Maximum processes to scan per cycle
+network_scan_enabled: true
+file_scan_enabled: true
+
+# ML Model Configuration
+model_path: "./models/"  # Path to store/load ML models
+model_retrain_interval: 86400  # Retrain models every 24 hours (seconds)
+confidence_threshold: 0.7  # Minimum confidence for threat detection
+
+# Logging Configuration
+log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+log_file: "/var/log/cyberrazor-agent.log"
+max_log_size: 10485760  # 10MB
+log_backup_count: 5
+
+# Security Configuration
+ssl_verify: false  # Set to true in production with proper certificates
+timeout: 10  # API request timeout in seconds
+retry_attempts: 3  # Number of retry attempts for failed requests
+
+# Threat Detection Settings
+suspicious_patterns:
+  - "ransomware"
+  - "keylogger"
+  - "backdoor"
+  - "trojan"
+  - "spyware"
+  - "crypto_miner"
+  - "botnet"
+  - "rootkit"
+  - "malware"
+  - "virus"
+
+# Network Analysis
+network_anomaly_threshold: 0.1  # Isolation Forest contamination factor
+max_connections_per_process: 10  # Flag processes with more connections
+
+# File Analysis
+file_extensions_to_scan:
+  - ".exe"
+  - ".dll"
+  - ".bat"
+  - ".cmd"
+  - ".ps1"
+  - ".vbs"
+  - ".js"
+  - ".jar"
+
+# Performance Settings
+cpu_threshold: 80.0  # CPU usage threshold for suspicious activity
+memory_threshold: 80.0  # Memory usage threshold for suspicious activity
+disk_scan_enabled: false  # Disable disk scanning for performance
+
+# Reporting Configuration
+report_to_wazuh: true
+report_to_backend: true
+report_to_local_log: true
+
+# Device Information
+device_name: ""  # Auto-detected if empty
+device_type: ""  # Auto-detected if empty
+location: ""  # Optional location tag 
