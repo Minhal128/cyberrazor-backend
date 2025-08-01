@@ -4,9 +4,10 @@ CyberRazor Main Backend Server (MongoDB Compatible)
 Handles activation keys, threat reporting and user portal data
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import os
@@ -29,6 +30,19 @@ app = FastAPI(
     version="2.0.0",
     description="Advanced Security Operations and Response Platform"
 )
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = datetime.now()
+    print(f"🔍 {start_time.strftime('%H:%M:%S')} - {request.method} {request.url.path}")
+    
+    response = await call_next(request)
+    
+    process_time = (datetime.now() - start_time).total_seconds() * 1000
+    print(f"✅ {request.method} {request.url.path} - {response.status_code} ({process_time:.2f}ms)")
+    
+    return response
 
 # CORS middleware
 app.add_middleware(
@@ -754,10 +768,12 @@ async def get_agent_status(user_email: str = None, database=Depends(get_database
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # ==== AUTHENTICATION ENDPOINTS ====
-@app.post("/api/auth/signup", response_model=Token)
+@app.post("/api/auth/signup")
 async def signup(user_data: UserCreate, database=Depends(get_database)):
     """Register a new user"""
     try:
+        print(f"🔐 Signup attempt for: {user_data.email}")
+        
         # Check if user already exists
         existing_user = await database.users.find_one({"email": user_data.email})
         if existing_user:
@@ -779,22 +795,23 @@ async def signup(user_data: UserCreate, database=Depends(get_database)):
         }
         
         await database.users.insert_one(user_doc)
+        print(f"✅ User created: {user_data.email}")
         
         # Create access token
         access_token = create_access_token(data={"sub": user_data.email, "user_id": user_id})
         
-        return Token(
-            access_token=access_token,
-            token_type="bearer",
-            user=UserResponse(
-                id=user_id,
-                username=user_data.username,
-                email=user_data.email,
-                is_admin=False,
-                activation_key=activation_key,
-                created_at=user_doc["created_at"]
-            )
-        )
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user_id,
+                "username": user_data.username,
+                "email": user_data.email,
+                "is_admin": False,
+                "activation_key": activation_key,
+                "created_at": user_doc["created_at"]
+            }
+        }
         
     except HTTPException:
         raise
@@ -802,34 +819,39 @@ async def signup(user_data: UserCreate, database=Depends(get_database)):
         print(f"❌ Signup error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.post("/api/auth/login", response_model=Token)
+@app.post("/api/auth/login")
 async def login(user_credentials: UserLogin, database=Depends(get_database)):
     """Authenticate user and return token"""
     try:
+        print(f"🔐 Login attempt for: {user_credentials.email}")
+        
         # Find user by email
         user = await database.users.find_one({"email": user_credentials.email})
         if not user:
+            print(f"❌ User not found: {user_credentials.email}")
             raise HTTPException(status_code=401, detail="Incorrect email or password")
         
         # Verify password
         if not verify_password(user_credentials.password, user["password_hash"]):
+            print(f"❌ Invalid password for: {user_credentials.email}")
             raise HTTPException(status_code=401, detail="Incorrect email or password")
         
         # Create access token
         access_token = create_access_token(data={"sub": user["email"], "user_id": str(user["_id"])})
+        print(f"✅ Login successful: {user_credentials.email}")
         
-        return Token(
-            access_token=access_token,
-            token_type="bearer",
-            user=UserResponse(
-                id=str(user["_id"]),
-                username=user["username"],
-                email=user["email"],
-                is_admin=user.get("is_admin", False),
-                activation_key=user.get("activation_key"),
-                created_at=user.get("created_at", "")
-            )
-        )
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": str(user["_id"]),
+                "username": user["username"],
+                "email": user["email"],
+                "is_admin": user.get("is_admin", False),
+                "activation_key": user.get("activation_key"),
+                "created_at": user.get("created_at", "")
+            }
+        }
         
     except HTTPException:
         raise
@@ -837,22 +859,27 @@ async def login(user_credentials: UserLogin, database=Depends(get_database)):
         print(f"❌ Login error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.get("/api/auth/me", response_model=UserResponse)
+@app.get("/api/auth/me")
 async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Get current user information"""
-    return UserResponse(
-        id=current_user["id"],
-        username=current_user["username"],
-        email=current_user["email"],
-        is_admin=current_user["is_admin"],
-        activation_key=current_user.get("activation_key"),
-        created_at=datetime.now().isoformat()
-    )
+    return {
+        "id": current_user["id"],
+        "username": current_user["username"],
+        "email": current_user["email"],
+        "is_admin": current_user["is_admin"],
+        "activation_key": current_user.get("activation_key"),
+        "created_at": datetime.now().isoformat()
+    }
 
 @app.post("/api/auth/logout")
 async def logout(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Logout user (token revocation would be handled client-side)"""
     return {"message": "Successfully logged out"}
+
+@app.get("/api/auth/test")
+async def test_auth_endpoint():
+    """Test endpoint to verify authentication endpoints are working"""
+    return {"message": "Authentication endpoints are working!", "status": "ok"}
 
 # Initialize default users if they don't exist
 async def init_default_users():
