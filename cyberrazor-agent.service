@@ -30,7 +30,7 @@ LimitNPROC=4096
 # Environment variables
 Environment=PYTHONPATH=/opt/cyberrazor-agent
 Environment=CYBERRAZOR_API_KEY=your-api-key-here
-Environment=CYBERRAZOR_BACKEND_URL=http://localhost:8000
+Environment=CYBERRAZOR_BACKEND_URL=https://cyberrazor-backend.vercel.app
 Environment=WAZUH_URL=http://localhost:55000
 Environment=WAZUH_USERNAME=wazuh
 Environment=WAZUH_PASSWORD=wazuh

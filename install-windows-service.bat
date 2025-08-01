@@ -49,7 +49,7 @@ nssm.exe set %SERVICE_NAME% Start SERVICE_AUTO_START
 
 REM Set environment variables
 nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "CYBERRAZOR_API_KEY=your-api-key-here"
-nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "CYBERRAZOR_BACKEND_URL=http://localhost:8000"
+nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "CYBERRAZOR_BACKEND_URL=https://cyberrazor-backend.vercel.app"
 nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "WAZUH_URL=http://localhost:55000"
 nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "WAZUH_USERNAME=wazuh"
 nssm.exe set %SERVICE_NAME% AppEnvironmentExtra "WAZUH_PASSWORD=wazuh"

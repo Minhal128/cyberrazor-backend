@@ -62,7 +62,7 @@ async def create_admin_user():
         print(f"🆔 User ID: {user_id}")
         print("="*60)
         print("⚠️  IMPORTANT: Change the admin password after first login!")
-        print("🔗 Login at: http://localhost:3000/login")
+        print("🔗 Login at: https://cyberrazor-backend.vercel.app/login")
         print("="*60)
         
         return {

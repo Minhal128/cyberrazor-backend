@@ -2,10 +2,10 @@
 
 # API Configuration
 api_key: "your-api-key-here"  # Replace with actual API key
-backend_url: "http://localhost:8000"  # Backend API URL
+backend_url: "https://cyberrazor-backend.vercel.app"  # Backend API URL
 
 # Wazuh SIEM Integration
-wazuh_url: "http://localhost:55000"  # Wazuh manager URL
+wazuh_url: "https://cyberrazor-backend.vercel.app"  # Wazuh manager URL
 wazuh_credentials:
   username: "wazuh"  # Wazuh API username
   password: "wazuh"  # Wazuh API password

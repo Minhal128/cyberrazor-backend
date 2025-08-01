@@ -20,7 +20,7 @@ import yara
 import uuid
 
 class FileMonitor(FileSystemEventHandler):
-    def __init__(self, backend_url="http://localhost:8000", device_id=None):
+    def __init__(self, backend_url="https://cyberrazor-backend.vercel.app", device_id=None):
         self.backend_url = backend_url
         self.device_id = device_id or os.environ.get('COMPUTERNAME', 'Unknown')
         self.session = requests.Session()

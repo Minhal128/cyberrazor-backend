@@ -20,7 +20,7 @@ async def test_backend_connection():
     """Test backend API connection"""
     try:
         # Test backend health endpoint
-        response = requests.get("http://localhost:8000/api/health", timeout=5)
+        response = requests.get("https://cyberrazor-backend.vercel.app/api/health", timeout=5)
         if response.status_code == 200:
             print("✅ Backend API is running and accessible")
             print(f"   Response: {response.json()}")
@@ -85,7 +85,7 @@ def test_threat_submission():
         
         # Submit threat to backend
         response = requests.post(
-            "http://localhost:8000/api/report-threat",
+            "https://cyberrazor-backend.vercel.app/api/report-threat",
             json=threat_data,
             timeout=10
         )
@@ -119,7 +119,7 @@ def test_device_activation():
         
         # Submit activation to backend
         response = requests.post(
-            "http://localhost:8000/api/activate-key",
+            "https://cyberrazor-backend.vercel.app/api/activate-key",
             json=activation_data,
             timeout=10
         )
@@ -216,9 +216,9 @@ async def main():
     else:
         print("\n⚠️  Some tests failed. Please check the issues above.")
         
-    print("\n🔗 Dashboard URL: http://localhost:3000")
-    print("🔗 Backend API: http://localhost:8000")
-    print("🔗 API Docs: http://localhost:8000/docs")
+    print("\n🔗 Dashboard URL: https://cyberrazor-backend.vercel.app")
+    print("🔗 Backend API: https://cyberrazor-backend.vercel.app")
+    print("🔗 API Docs: https://cyberrazor-backend.vercel.app/docs")
 
 if __name__ == "__main__":
     asyncio.run(main())

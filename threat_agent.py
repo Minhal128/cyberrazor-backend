@@ -104,7 +104,7 @@ class ThreatDetectionAgent:
             logger.warning(f"Config file {config_path} not found, using defaults")
             return {
                 'api_key': os.getenv('CYBERRAZOR_API_KEY', ''),
-                'backend_url': os.getenv('CYBERRAZOR_BACKEND_URL', 'http://localhost:8000'),
+                'backend_url': os.getenv('CYBERRAZOR_BACKEND_URL', 'https://cyberrazor-backend.vercel.app'),
                 'wazuh_url': os.getenv('WAZUH_URL', 'http://localhost:55000'),
                 'wazuh_credentials': {
                     'username': os.getenv('WAZUH_USERNAME', ''),
